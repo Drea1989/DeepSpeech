@@ -3,13 +3,12 @@ progressbar2
 python-utils
 tensorflow
 numpy
-scipy
-paramiko
+matplotlib
+scipy == 0.19.1
+paramiko >= 2.1
 pysftp
 sox
 python_speech_features
-BeautifulSoup
 pyxdg
 bs4
 six
-https://github.com/kpu/kenlm/archive/master.zip

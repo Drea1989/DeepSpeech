@@ -31,6 +31,8 @@ source ${PYENV_ROOT}/versions/${pyver}/envs/${PYENV_NAME}/bin/activate
 pip install --upgrade ${TENSORFLOW_WHEEL}
 grep -v "tensorflow" ${HOME}/DeepSpeech/ds/requirements.txt | pip install --upgrade -r /dev/stdin
 
+download_ctc_kenlm "/tmp/ds"
+
 pushd ${HOME}/DeepSpeech/ds/
     time ./bin/run-tc-ldc93s1.sh
 popd

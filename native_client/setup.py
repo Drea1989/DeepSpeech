@@ -4,13 +4,19 @@ from setuptools import setup, Extension
 from distutils.command.build import build
 
 import os
-import numpy
 import subprocess
 
 try:
-    numpy_include = numpy.get_include()
-except AttributeError:
-    numpy_include = numpy.get_numpy_include()
+    import numpy
+    try:
+        numpy_include = numpy.get_include()
+    except AttributeError:
+        numpy_include = numpy.get_numpy_include()
+except ImportError:
+    numpy_include = ''
+    assert 'NUMPY_INCLUDE' in os.environ
+
+numpy_include = os.getenv('NUMPY_INCLUDE', numpy_include)
 
 class BuildExtFirst(build):
     sub_commands = [('build_ext', build.has_ext_modules),
@@ -21,7 +27,7 @@ class BuildExtFirst(build):
 model = Extension('_model',
         ['python/model.i'],
         include_dirs = [numpy_include],
-        libraries = ['deepspeech', 'deepspeech_utils', 'tensorflow_cc'])
+        libraries = list(map(lambda x: x.strip(), os.getenv('LIBS', '').split('-l')[1:])))
 
 utils = Extension('_utils',
         ['python/utils.i'],
@@ -39,4 +45,4 @@ setup(name = 'deepspeech',
       license = 'MPL-2.0',
       url = 'https://github.com/mozilla/DeepSpeech',
       ext_modules = [model, utils],
-      install_requires = [ 'numpy', 'scipy' ])
+      install_requires = [ 'numpy' ])

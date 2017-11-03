@@ -502,14 +502,12 @@ def get_tower_results(model_feeder, optimizer, is_training):
     r'''
     With this preliminary step out of the way, we can for each GPU introduce a
     tower for which's batch we calculate
-
     * The CTC decodings ``decoded``,
     * The (total) loss against the outcome (Y) ``total_loss``,
     * The loss averaged over the whole batch ``avg_loss``,
     * The optimization gradient (computed based on the averaged loss),
     * The Levenshtein distances between the decodings and their transcriptions ``distance``,
     * The mean edit distance of the outcome averaged over the whole batch ``mean_edit_distance``
-
     and retain the original ``labels`` (Y).
     ``decoded``, ``labels``, the optimization gradient, ``distance``, ``mean_edit_distance``,
     ``total_loss`` and ``avg_loss`` are collected into the corresponding arrays
@@ -737,9 +735,7 @@ def stopwatch(start_duration=0):
     The first call starts it, second call stops it, third call continues it etc.
     So if you want to measure the accumulated time spent in a certain area of the code,
     you can surround that code by stopwatch-calls like this:
-
     .. code:: python
-
         fun_time = 0 # initializes a stopwatch
         [...]
         for i in range(10):
@@ -752,7 +748,6 @@ def stopwatch(start_duration=0):
         [...]
         # The following line only makes sense after an even call of :code:`fun_time = stopwatch(fun_time)`.
         print 'Time spent in fun():', format_duration(fun_time)
-
     '''
     if start_duration == 0:
         return datetime.datetime.utcnow()
@@ -779,7 +774,6 @@ id_counter = 0
 
 def new_id():
     '''Returns a new ID that is unique on process level. Not thread-safe.
-
     Returns:
         int. The new ID
     '''
@@ -790,7 +784,6 @@ def new_id():
 class Sample(object):
     def __init__(self, src, res, loss, mean_edit_distance, sample_wer):
         '''Represents one item of a WER report.
-
         Args:
             src (str): source text
             res (str): resulting text
@@ -809,7 +802,6 @@ class Sample(object):
 class WorkerJob(object):
     def __init__(self, epoch_id, index, set_name, steps, report):
         '''Represents a job that should be executed by a worker.
-
         Args:
             epoch_id (int): the ID of the 'parent' epoch
             index (int): the epoch index of the 'parent' epoch
@@ -835,11 +827,9 @@ class WorkerJob(object):
 class Epoch(object):
     '''Represents an epoch that should be executed by the Training Coordinator.
     Creates `num_jobs` `WorkerJob` instances in state 'open'.
-
     Args:
         index (int): the epoch index of the 'parent' epoch
         num_jobs (int): the number of jobs in this epoch
-
     Kwargs:
         set_name (str): the name of the data-set - one of 'train', 'dev', 'test'
         report (bool): if this job should produce a WER report
@@ -862,7 +852,6 @@ class Epoch(object):
 
     def name(self):
         '''Gets a printable name for this epoch.
-
         Returns:
             str. printable name for this epoch
         '''
@@ -879,10 +868,8 @@ class Epoch(object):
 
     def get_job(self, worker):
         '''Gets the next open job from this epoch. The job will be marked as 'running'.
-
         Args:
             worker (int): index of the worker that takes the job
-
         Returns:
             WorkerJob. job that has been marked as running for this worker
         '''
@@ -896,7 +883,6 @@ class Epoch(object):
 
     def finish_job(self, job):
         '''Finishes a running job. Removes it from the running jobs list and adds it to the done jobs list.
-
         Args:
             job (WorkerJob): the job to put into state 'done'
         '''
@@ -911,7 +897,6 @@ class Epoch(object):
     def done(self):
         '''Checks, if all jobs of the epoch are in state 'done'.
         It also lazy-prepares a WER report from the result data of all jobs.
-
         Returns:
             bool. if all jobs of the epoch are 'done'
         '''
@@ -965,7 +950,6 @@ class Epoch(object):
 
     def job_status(self):
         '''Provides a printable overview of the states of the jobs of this epoch.
-
         Returns:
             str. printable overall job state
         '''
@@ -1065,10 +1049,8 @@ class TrainingCoordinator(object):
     def start_coordination(self, model_feeder, step=0):
         '''Starts to coordinate epochs and jobs among workers on base of
         data-set sizes, the (global) step and FLAGS parameters.
-
         Args:
             model_feeder (ModelFeeder): data-sets to be used for coordinated training
-
         Kwargs:
             step (int): global step of a loaded model to determine starting point
         '''
@@ -1248,10 +1230,8 @@ class TrainingCoordinator(object):
     def get_next_index(self, set_name):
         '''Retrives a new cluster-unique batch index for a given set-name.
         Prevents applying one batch multiple times per epoch.
-
         Args:
             set_name (str): name of the data set - one of 'train', 'dev', 'test'
-
         Returns:
             int. new data set index
         '''
@@ -1280,10 +1260,8 @@ class TrainingCoordinator(object):
 
     def get_job(self, worker=0):
         '''Retrieves the first job for a worker.
-
         Kwargs:
             worker (int): index of the worker to get the first job for
-
         Returns:
             WorkerJob. a job of one of the running epochs that will get
                 associated with the given worker and put into state 'running'
@@ -1323,11 +1301,9 @@ class TrainingCoordinator(object):
 
     def next_job(self, job):
         '''Sends a finished job back to the coordinator and retrieves in exchange the next one.
-
         Kwargs:
             job (WorkerJob): job that was finished by a worker and who's results are to be
                 digested by the coordinator
-
         Returns:
             WorkerJob. next job of one of the running epochs that will get
                 associated with the worker from the finished job and put into state 'running'
