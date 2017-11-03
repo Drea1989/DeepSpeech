@@ -407,50 +407,25 @@ def BiRNN(batch_x, seq_length, dropout):
     # Both of which have inputs of length `n_cell_dim` and bias `1.0` for the forget gate of the LSTM.
 
     # Forward direction cell: (if else required for TF 1.0 and 1.1 compat)
-    lstm_fw_cell = tf.contrib.rnn.BasicLSTMCell(n_cell_dim, forget_bias=1.0, state_is_tuple=True) \
-                   if 'reuse' not in inspect.getargspec(tf.contrib.rnn.BasicLSTMCell.__init__).args else \
-                   tf.contrib.rnn.BasicLSTMCell(n_cell_dim, forget_bias=1.0, state_is_tuple=True, reuse=tf.get_variable_scope().reuse)
-    lstm_fw_cell = tf.contrib.rnn.DropoutWrapper(lstm_fw_cell,
-                                                input_keep_prob=1.0 - dropout[3],
-                                                output_keep_prob=1.0 - dropout[3],
-                                                seed=FLAGS.random_seed)
-    # Backward direction cell: (if else required for TF 1.0 and 1.1 compat)
-    lstm_bw_cell = tf.contrib.rnn.BasicLSTMCell(n_cell_dim, forget_bias=1.0, state_is_tuple=True) \
-                   if 'reuse' not in inspect.getargspec(tf.contrib.rnn.BasicLSTMCell.__init__).args else \
-                   tf.contrib.rnn.BasicLSTMCell(n_cell_dim, forget_bias=1.0, state_is_tuple=True, reuse=tf.get_variable_scope().reuse)
-    lstm_bw_cell = tf.contrib.rnn.DropoutWrapper(lstm_bw_cell,
-                                                input_keep_prob=1.0 - dropout[4],
-                                                output_keep_prob=1.0 - dropout[4],
-                                                seed=FLAGS.random_seed)
-
-    # `layer_3` is now reshaped into `[n_steps, batch_size, 2*n_cell_dim]`,
-    # as the LSTM BRNN expects its input to be of shape `[max_time, batch_size, input_size]`.
-    layer_3 = tf.reshape(layer_3, [-1, batch_x_shape[0], n_hidden_3])
-
-    # Now we feed `layer_3` into the LSTM BRNN cell and obtain the LSTM BRNN output.
-    outputs, output_states = tf.nn.bidirectional_dynamic_rnn(cell_fw=lstm_fw_cell,
-                                                             cell_bw=lstm_bw_cell,
-                                                             inputs=layer_3,
-                                                             dtype=tf.float32,
-                                                             time_major=True,
-                                                             sequence_length=seq_length)
+    LSTMs = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=7,
+                                           num_units=n_cell_dim,
+                                           input_size=len(n_cell_dim),
+                                           input_mode='linear_input',
+                                           direction=tf.contrib.cudnn_rnn_ops.CUDNN_RNN_BIDIRECTION,
+                                           dtype=tf.float32,
+                                           dropout=1.0 - dropout[3],
+                                           seed=FLAGS.random_seed)
 
     # Reshape outputs from two tensors each of shape [n_steps, batch_size, n_cell_dim]
     # to a single tensor of shape [n_steps*batch_size, 2*n_cell_dim]
-    outputs = tf.concat(outputs, 2)
+    outputs = tf.concat(LSTMs, 2)
     outputs = tf.reshape(outputs, [-1, 2*n_cell_dim])
 
-    # Now we feed `outputs` to the fifth hidden layer with clipped RELU activation and dropout
-    b5 = variable_on_worker_level('b5', [n_hidden_5], tf.random_normal_initializer(stddev=FLAGS.b5_stddev))
-    h5 = variable_on_worker_level('h5', [(2 * n_cell_dim), n_hidden_5], tf.random_normal_initializer(stddev=FLAGS.h5_stddev))
-    layer_5 = tf.minimum(tf.nn.relu(tf.add(tf.matmul(outputs, h5), b5)), FLAGS.relu_clip)
-    layer_5 = tf.nn.dropout(layer_5, (1.0 - dropout[5]))
-
-    # Now we apply the weight matrix `h6` and bias `b6` to the output of `layer_5`
+    # Now we apply the weight matrix `h6` and bias `b6` to the output of `LSTMs`
     # creating `n_classes` dimensional vectors, the logits.
     b6 = variable_on_worker_level('b6', [n_hidden_6], tf.random_normal_initializer(stddev=FLAGS.b6_stddev))
     h6 = variable_on_worker_level('h6', [n_hidden_5, n_hidden_6], tf.contrib.layers.xavier_initializer(uniform=False))
-    layer_6 = tf.add(tf.matmul(layer_5, h6), b6)
+    layer_6 = tf.add(tf.matmul(outputs, h6), b6)
 
     # Finally we reshape layer_6 from a tensor of shape [n_steps*batch_size, n_hidden_6]
     # to the slightly more useful shape [n_steps, batch_size, n_hidden_6].
